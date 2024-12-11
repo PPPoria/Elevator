@@ -5,9 +5,13 @@
 #include <conio.h>
 #include "ElevatorPanel.h"
 
+int mLow, mHigh, mColumns, mRow;
 int mButtonLength = 60, mPadding = 10;
 int* indicatorRect;
 int** buttonRect;
+RECT indicator;
+RECT* button;
+bool event[33] = { 0 };//如果有地下室，则前三个为地下室，event[3]开始才是一楼；否则event[0]即是一楼
 
 void test() {
 	int winWidth = 480;
@@ -80,52 +84,61 @@ void setColumnsAndRow(int& columns, int& row, int low, int high) {
 }
 
 void initWin(int low, int high) {
-	int columns, row;
-	setColumnsAndRow(columns, row, low, high);
+	mLow = low;
+	mHigh = high;
+	setColumnsAndRow(mColumns, mRow, low, high);
 	//生成窗口
-	initgraph(mPadding + columns * (mPadding + mButtonLength), 2 * mPadding + mButtonLength * 2 + 11 * (mPadding + mButtonLength));
+	initgraph(mPadding + mColumns * (mPadding + mButtonLength), 2 * mPadding + mButtonLength * 2 + 11 * (mPadding + mButtonLength));
 	for (int i = 0; i * 8 < 256; i++) {
 		setbkcolor(RGB(i * 8, i * 8, i * 8));
 		cleardevice();
 		Sleep(1);
 	}
-	setbkcolor(WHITE);
+	setbkcolor(RGB(255, 255, 255));
 }
 
-void initView(int low, int high) {
-	int columns, row;
-	setColumnsAndRow(columns, row, low, high);
-
+void initView() {
 	//绘制楼层显示器
 	indicatorRect = (int*)malloc(4 * sizeof(int));
 	assert(indicatorRect);
-	indicatorRect[0] = mPadding;
-	indicatorRect[1] = mPadding;
-	indicatorRect[2] = columns * (mPadding + mButtonLength);
-	indicatorRect[3] = mPadding + 2 * mButtonLength;
+	indicator.left = indicatorRect[0] = mPadding;
+	indicator.top = indicatorRect[1] = mPadding;
+	indicator.right = indicatorRect[2] = mColumns * (mPadding + mButtonLength);
+	indicator.bottom = indicatorRect[3] = mPadding + 2 * mButtonLength;
 	setlinecolor(BLACK);
 	rectangle(indicatorRect[0], indicatorRect[1], indicatorRect[2], indicatorRect[3]);
-	//绘制楼层按钮
+	settextcolor(BLACK);
+	drawNumber(1, indicator);
 
-	buttonRect = (int**)malloc(columns * row * sizeof(int*));//格子数数从右下角开始，从左往右，从下往上
-	assert(buttonRect);
-	for (int i = 0, j = 0, k = row - 1; i < columns * row; i++) {
+	//绘制楼层按钮
+	buttonRect = (int**)malloc(mColumns * mRow * sizeof(int*));//格子数数从右下角开始，从左往右，从下往上
+	button = (RECT*)malloc(mColumns * mRow * sizeof(RECT));
+	assert(buttonRect && button);
+	for (int i = 0, j = 0, k = mRow - 1; i < mColumns * mRow; i++) {
 		buttonRect[i] = (int*)malloc(4 * sizeof(int));
 		assert(buttonRect[i]);
-		buttonRect[i][0] = mPadding + (mPadding + mButtonLength) * j;
-		buttonRect[i][1] = indicatorRect[3] + (mPadding + mButtonLength) * k + mPadding;
-		buttonRect[i][2] = buttonRect[i][0] + mButtonLength;
-		buttonRect[i][3] = buttonRect[i][1] + mButtonLength;
-		if (++j % columns != 0) continue;
+		button[i].left = buttonRect[i][0] = mPadding + (mPadding + mButtonLength) * j;
+		button[i].top = buttonRect[i][1] = indicatorRect[3] + (mPadding + mButtonLength) * k + mPadding;
+		button[i].right = buttonRect[i][2] = buttonRect[i][0] + mButtonLength;
+		button[i].bottom = buttonRect[i][3] = buttonRect[i][1] + mButtonLength;
+		if (++j % mColumns != 0) continue;
 		j = 0;
 		k--;
 	}
-	for (int i = 0; i < high + 3; i++) {
-		if (i < columns && low != 0 && i > -1 * low - 1) continue;
+
+	for (int i = 0, j = -1, k = 1, number; i < mColumns * mRow; i++) {
+		if (i < mColumns && mLow != 0 && i > -1 * mLow - 1) continue;
+		if (i >= mHigh + 3 && mLow != 0) break;
+		if (i >= mHigh && mLow == 0) break;
 		rectangle(buttonRect[i][0], buttonRect[i][1], buttonRect[i][2], buttonRect[i][3]);
+
+		if (i < mColumns && mLow != 0)
+			drawNumber(j--, button[i]);
+		else
+			drawNumber(k++, button[i]);
 	}
 }
-void initListener(int low, int high) {
+void initListener() {
 	ExMessage m;
 	while (true) {
 		m = getmessage(EX_MOUSE | EX_KEY);
@@ -140,12 +153,74 @@ void initListener(int low, int high) {
 }
 
 void buttonDown(ExMessage m) {
-	setrop2(R2_NOTXORPEN);//设置形状叠加时二元光栅：NOT（当前颜色 XOR 背景颜色）
+	//处理事件
+	setrop2(R2_XORPEN);//XOR
+	setlinecolor(LIGHTCYAN);//亮青色
+	setlinestyle(PS_SOLID, 3);//实线，宽度3
+	setfillcolor(WHITE);//填充色白色
+	int click = getClickButton(m.x, m.y);
+	if (click == -1) return;
+	if (!event[click]) {
+		event[click] = 1;
+		fillrectangle(buttonRect[click][0], buttonRect[click][1], buttonRect[click][2], buttonRect[click][3]);
+	}
+	
+	//绘制点击波纹
+	setrop2(R2_NOTXORPEN);//NOT XOR
 	for (int i = 0; i < 11; i++) {
 		setlinecolor(RGB(25 * i, 25 * i, 25 * i));
-		circle(m.x, m.y, 2 * i);//参数为圆心x、y，和半径
+		circle(m.x, m.y, 2 * i);
 		Sleep(8);
 		circle(m.x, m.y, 2 * i);
 	}
-	FlushMouseMsgBuffer();//清空鼠标事件缓冲区，防止事件堆积
+	FlushMouseMsgBuffer();
+}
+
+void drawNumber(int number, RECT& r) {
+	switch (number) {
+	case -3: drawtext(_T("-3"), &r, DT_CENTER | DT_VCENTER | DT_SINGLELINE); break;
+	case -2: drawtext(_T("-2"), &r, DT_CENTER | DT_VCENTER | DT_SINGLELINE); break;
+	case -1: drawtext(_T("-1"), &r, DT_CENTER | DT_VCENTER | DT_SINGLELINE); break;
+	case 1: drawtext(_T("1"), &r, DT_CENTER | DT_VCENTER | DT_SINGLELINE); break;
+	case 2: drawtext(_T("2"), &r, DT_CENTER | DT_VCENTER | DT_SINGLELINE); break;
+	case 3: drawtext(_T("3"), &r, DT_CENTER | DT_VCENTER | DT_SINGLELINE); break;
+	case 4: drawtext(_T("4"), &r, DT_CENTER | DT_VCENTER | DT_SINGLELINE); break;
+	case 5: drawtext(_T("5"), &r, DT_CENTER | DT_VCENTER | DT_SINGLELINE); break;
+	case 6: drawtext(_T("6"), &r, DT_CENTER | DT_VCENTER | DT_SINGLELINE); break;
+	case 7: drawtext(_T("7"), &r, DT_CENTER | DT_VCENTER | DT_SINGLELINE); break;
+	case 8: drawtext(_T("8"), &r, DT_CENTER | DT_VCENTER | DT_SINGLELINE); break;
+	case 9: drawtext(_T("9"), &r, DT_CENTER | DT_VCENTER | DT_SINGLELINE); break;
+	case 10: drawtext(_T("10"), &r, DT_CENTER | DT_VCENTER | DT_SINGLELINE); break;
+	case 11: drawtext(_T("11"), &r, DT_CENTER | DT_VCENTER | DT_SINGLELINE); break;
+	case 12: drawtext(_T("12"), &r, DT_CENTER | DT_VCENTER | DT_SINGLELINE); break;
+	case 13: drawtext(_T("13"), &r, DT_CENTER | DT_VCENTER | DT_SINGLELINE); break;
+	case 14: drawtext(_T("14"), &r, DT_CENTER | DT_VCENTER | DT_SINGLELINE); break;
+	case 15: drawtext(_T("15"), &r, DT_CENTER | DT_VCENTER | DT_SINGLELINE); break;
+	case 16: drawtext(_T("16"), &r, DT_CENTER | DT_VCENTER | DT_SINGLELINE); break;
+	case 17: drawtext(_T("17"), &r, DT_CENTER | DT_VCENTER | DT_SINGLELINE); break;
+	case 18: drawtext(_T("18"), &r, DT_CENTER | DT_VCENTER | DT_SINGLELINE); break;
+	case 19: drawtext(_T("19"), &r, DT_CENTER | DT_VCENTER | DT_SINGLELINE); break;
+	case 20: drawtext(_T("20"), &r, DT_CENTER | DT_VCENTER | DT_SINGLELINE); break;
+	case 21: drawtext(_T("21"), &r, DT_CENTER | DT_VCENTER | DT_SINGLELINE); break;
+	case 22: drawtext(_T("22"), &r, DT_CENTER | DT_VCENTER | DT_SINGLELINE); break;
+	case 23: drawtext(_T("23"), &r, DT_CENTER | DT_VCENTER | DT_SINGLELINE); break;
+	case 24: drawtext(_T("24"), &r, DT_CENTER | DT_VCENTER | DT_SINGLELINE); break;
+	case 25: drawtext(_T("25"), &r, DT_CENTER | DT_VCENTER | DT_SINGLELINE); break;
+	case 26: drawtext(_T("26"), &r, DT_CENTER | DT_VCENTER | DT_SINGLELINE); break;
+	case 27: drawtext(_T("27"), &r, DT_CENTER | DT_VCENTER | DT_SINGLELINE); break;
+	case 28: drawtext(_T("28"), &r, DT_CENTER | DT_VCENTER | DT_SINGLELINE); break;
+	case 29: drawtext(_T("29"), &r, DT_CENTER | DT_VCENTER | DT_SINGLELINE); break;
+	case 30: drawtext(_T("30"), &r, DT_CENTER | DT_VCENTER | DT_SINGLELINE); break;
+	default: drawtext(_T("null"), &r, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+	}
+}
+
+int getClickButton(int x, int y) {
+	for (int i = 0; i < mColumns * mRow; i++) {
+		if (i < mColumns && mLow != 0 && i > -1 * mLow - 1) continue;
+		if (i >= mHigh + 3 && mLow != 0) break;
+		if (i >= mHigh && mLow == 0) break;
+		if (x > buttonRect[i][0] && y > buttonRect[i][1] && x < buttonRect[i][2] && y < buttonRect[i][3]) return i;
+	}
+	return -1;
 }
