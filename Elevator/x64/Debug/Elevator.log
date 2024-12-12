@@ -1,2 +1,3 @@
-﻿  Main.cpp
-  Elevator.vcxproj -> C:\Users\Poria\Desktop\Elevator\x64\Debug\Elevator.exe
+﻿  ElevatorPanel.cpp
+E:\MyProjects\Elevator\Elevator\ElevatorPanel.cpp(143,33): warning C4101: “number”: 未引用的局部变量
+  Elevator.vcxproj -> E:\MyProjects\Elevator\x64\Debug\Elevator.exe

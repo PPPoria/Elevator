@@ -22,8 +22,12 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 1,
+          "SelectedChildIndex": 2,
           "Children": [
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{aa2115a1-9712-457b-9047-dbb71ca2cdd2}"
+            },
             {
               "$type": "Document",
               "DocumentIndex": 2,
@@ -32,10 +36,9 @@
               "RelativeDocumentMoniker": "Elevator\\ElevatorPanel.h",
               "ToolTip": "E:\\MyProjects\\Elevator\\Elevator\\ElevatorPanel.h",
               "RelativeToolTip": "Elevator\\ElevatorPanel.h",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAQAAABBAAAAAAAAAA==",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAwAAAAeAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
-              "WhenOpened": "2024-12-11T06:02:16.735Z",
-              "EditorCaption": ""
+              "WhenOpened": "2024-12-11T06:02:16.735Z"
             },
             {
               "$type": "Document",
@@ -45,7 +48,7 @@
               "RelativeDocumentMoniker": "Elevator\\ElevatorPanel.cpp",
               "ToolTip": "E:\\MyProjects\\Elevator\\Elevator\\ElevatorPanel.cpp",
               "RelativeToolTip": "Elevator\\ElevatorPanel.cpp",
-              "ViewState": "AgIAAF0AAAAAAAAAAAAAAHoAAAAdAAAAAAAAAA==",
+              "ViewState": "AgIAAPEAAAAAAAAAAAASwAcBAAAeAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
               "WhenOpened": "2024-12-11T06:02:16.763Z",
               "EditorCaption": ""
@@ -58,10 +61,9 @@
               "RelativeDocumentMoniker": "Elevator\\Main.cpp",
               "ToolTip": "E:\\MyProjects\\Elevator\\Elevator\\Main.cpp",
               "RelativeToolTip": "Elevator\\Main.cpp",
-              "ViewState": "AgIAABIAAAAAAAAAAAAAABwAAAAWAAAAAAAAAA==",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAQAAAASAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
-              "WhenOpened": "2024-12-11T06:02:16.818Z",
-              "EditorCaption": ""
+              "WhenOpened": "2024-12-11T06:02:16.818Z"
             }
           ]
         }

@@ -3,15 +3,21 @@
 #include <assert.h>
 #include <graphics.h>
 #include <conio.h>
+#include <pthread.h>
 #include "ElevatorPanel.h"
 
+constexpr auto CLOSED = -1;
+constexpr auto MOVING_STOP = 0;
+constexpr auto MOVING_UP = 1;
+constexpr auto MOVING_DOWN = 2;
+
+pthread_t elevatorThread;
 int mLow, mHigh, mColumns, mRow;
 int mButtonLength = 60, mPadding = 10;
-int* indicatorRect;
-int** buttonRect;
-RECT indicator;
-RECT* button;
-bool event[33] = { 0 };//如果有地下室，则前三个为地下室，event[3]开始才是一楼；否则event[0]即是一楼
+int** indicatorRect, ** buttonRect;
+RECT* indicator, * button;
+bool event[33] = { 0 };//如果有地下室，则前三个为地下室{-3, -2, -1}，event[3]开始才是一楼；否则event[0]即是一楼
+int status = MOVING_STOP;
 
 void test() {
 	int winWidth = 480;
@@ -99,16 +105,25 @@ void initWin(int low, int high) {
 
 void initView() {
 	//绘制楼层显示器
-	indicatorRect = (int*)malloc(4 * sizeof(int));
-	assert(indicatorRect);
-	indicator.left = indicatorRect[0] = mPadding;
-	indicator.top = indicatorRect[1] = mPadding;
-	indicator.right = indicatorRect[2] = mColumns * (mPadding + mButtonLength);
-	indicator.bottom = indicatorRect[3] = mPadding + 2 * mButtonLength;
+	indicatorRect = (int**)malloc(4 * sizeof(int*));
+	indicatorRect[0] = (int*)malloc(4 * sizeof(int));
+	indicatorRect[1] = (int*)malloc(4 * sizeof(int));
+	assert(indicatorRect && indicatorRect[0] && indicatorRect[1]);
+	indicator = (RECT*)malloc(2 * sizeof(RECT));//第一个用于显示数字，第二个用于显示运行状态
+	assert(indicator);
+	indicator[0].left = indicatorRect[0][0] = mPadding;
+	indicator[0].top = indicatorRect[0][1] = mPadding;
+	indicator[0].right = indicatorRect[0][2] = mColumns * (mPadding + mButtonLength);
+	indicator[0].bottom = indicatorRect[0][3] = mPadding + mButtonLength;
+	indicator[1].left = indicatorRect[1][0] = mPadding;
+	indicator[1].top = indicatorRect[1][1] = mPadding + mButtonLength;
+	indicator[1].right = indicatorRect[1][2] = mColumns * (mPadding + mButtonLength);
+	indicator[1].bottom = indicatorRect[1][3] = mPadding + 2 * mButtonLength;
 	setlinecolor(BLACK);
-	rectangle(indicatorRect[0], indicatorRect[1], indicatorRect[2], indicatorRect[3]);
+	rectangle(indicatorRect[0][0], indicatorRect[0][1], indicatorRect[1][2], indicatorRect[1][3]);
 	settextcolor(BLACK);
-	drawNumber(1, indicator);
+	drawNumber(1, indicator[0]);
+	drawStatus(MOVING_STOP, indicator[1]);
 
 	//绘制楼层按钮
 	buttonRect = (int**)malloc(mColumns * mRow * sizeof(int*));//格子数数从右下角开始，从左往右，从下往上
@@ -118,27 +133,28 @@ void initView() {
 		buttonRect[i] = (int*)malloc(4 * sizeof(int));
 		assert(buttonRect[i]);
 		button[i].left = buttonRect[i][0] = mPadding + (mPadding + mButtonLength) * j;
-		button[i].top = buttonRect[i][1] = indicatorRect[3] + (mPadding + mButtonLength) * k + mPadding;
+		button[i].top = buttonRect[i][1] = indicatorRect[1][3] + (mPadding + mButtonLength) * k + mPadding;
 		button[i].right = buttonRect[i][2] = buttonRect[i][0] + mButtonLength;
 		button[i].bottom = buttonRect[i][3] = buttonRect[i][1] + mButtonLength;
 		if (++j % mColumns != 0) continue;
 		j = 0;
 		k--;
 	}
-
-	for (int i = 0, j = -1, k = 1, number; i < mColumns * mRow; i++) {
-		if (i < mColumns && mLow != 0 && i > -1 * mLow - 1) continue;
+	for (int i = 0, j = -3, k = 1, number; i < mColumns * mRow; i++) {
+		if (i < mColumns && mLow != 0 && 3 - i > -1 * mLow) continue;
 		if (i >= mHigh + 3 && mLow != 0) break;
 		if (i >= mHigh && mLow == 0) break;
 		rectangle(buttonRect[i][0], buttonRect[i][1], buttonRect[i][2], buttonRect[i][3]);
 
 		if (i < mColumns && mLow != 0)
-			drawNumber(j--, button[i]);
+			drawNumber(-1 * (3 - i), button[i]);
 		else
 			drawNumber(k++, button[i]);
 	}
 }
+
 void initListener() {
+	if (pthread_create(&elevatorThread, NULL, elevatorMoving, NULL) != 0) return;//多线程，启动！
 	ExMessage m;
 	while (true) {
 		m = getmessage(EX_MOUSE | EX_KEY);
@@ -147,7 +163,11 @@ void initListener() {
 			buttonDown(m);
 			break;
 		case WM_KEYDOWN://Esc退出
-			if (m.vkcode == VK_ESCAPE) return;
+			if (m.vkcode == VK_ESCAPE) {
+				status = CLOSED;
+				pthread_join(elevatorThread, NULL);//别急，等我结束！
+				return;
+			}
 		}
 	}
 }
@@ -164,7 +184,7 @@ void buttonDown(ExMessage m) {
 		event[click] = 1;
 		fillrectangle(buttonRect[click][0], buttonRect[click][1], buttonRect[click][2], buttonRect[click][3]);
 	}
-	
+
 	//绘制点击波纹
 	setrop2(R2_NOTXORPEN);//NOT XOR
 	for (int i = 0; i < 11; i++) {
@@ -176,20 +196,21 @@ void buttonDown(ExMessage m) {
 	FlushMouseMsgBuffer();
 }
 
+//打表：简单代码，极致效率
 void drawNumber(int number, RECT& r) {
 	switch (number) {
 	case -3: drawtext(_T("-3"), &r, DT_CENTER | DT_VCENTER | DT_SINGLELINE); break;
 	case -2: drawtext(_T("-2"), &r, DT_CENTER | DT_VCENTER | DT_SINGLELINE); break;
 	case -1: drawtext(_T("-1"), &r, DT_CENTER | DT_VCENTER | DT_SINGLELINE); break;
-	case 1: drawtext(_T("1"), &r, DT_CENTER | DT_VCENTER | DT_SINGLELINE); break;
-	case 2: drawtext(_T("2"), &r, DT_CENTER | DT_VCENTER | DT_SINGLELINE); break;
-	case 3: drawtext(_T("3"), &r, DT_CENTER | DT_VCENTER | DT_SINGLELINE); break;
-	case 4: drawtext(_T("4"), &r, DT_CENTER | DT_VCENTER | DT_SINGLELINE); break;
-	case 5: drawtext(_T("5"), &r, DT_CENTER | DT_VCENTER | DT_SINGLELINE); break;
-	case 6: drawtext(_T("6"), &r, DT_CENTER | DT_VCENTER | DT_SINGLELINE); break;
-	case 7: drawtext(_T("7"), &r, DT_CENTER | DT_VCENTER | DT_SINGLELINE); break;
-	case 8: drawtext(_T("8"), &r, DT_CENTER | DT_VCENTER | DT_SINGLELINE); break;
-	case 9: drawtext(_T("9"), &r, DT_CENTER | DT_VCENTER | DT_SINGLELINE); break;
+	case 1: drawtext(_T(" 1"), &r, DT_CENTER | DT_VCENTER | DT_SINGLELINE); break;
+	case 2: drawtext(_T(" 2"), &r, DT_CENTER | DT_VCENTER | DT_SINGLELINE); break;
+	case 3: drawtext(_T(" 3"), &r, DT_CENTER | DT_VCENTER | DT_SINGLELINE); break;
+	case 4: drawtext(_T(" 4"), &r, DT_CENTER | DT_VCENTER | DT_SINGLELINE); break;
+	case 5: drawtext(_T(" 5"), &r, DT_CENTER | DT_VCENTER | DT_SINGLELINE); break;
+	case 6: drawtext(_T(" 6"), &r, DT_CENTER | DT_VCENTER | DT_SINGLELINE); break;
+	case 7: drawtext(_T(" 7"), &r, DT_CENTER | DT_VCENTER | DT_SINGLELINE); break;
+	case 8: drawtext(_T(" 8"), &r, DT_CENTER | DT_VCENTER | DT_SINGLELINE); break;
+	case 9: drawtext(_T(" 9"), &r, DT_CENTER | DT_VCENTER | DT_SINGLELINE); break;
 	case 10: drawtext(_T("10"), &r, DT_CENTER | DT_VCENTER | DT_SINGLELINE); break;
 	case 11: drawtext(_T("11"), &r, DT_CENTER | DT_VCENTER | DT_SINGLELINE); break;
 	case 12: drawtext(_T("12"), &r, DT_CENTER | DT_VCENTER | DT_SINGLELINE); break;
@@ -215,12 +236,103 @@ void drawNumber(int number, RECT& r) {
 	}
 }
 
+void drawStatus(int status, RECT& r) {
+	switch (status) {
+	case MOVING_STOP: drawtext(_T("当前"), &r, DT_CENTER | DT_VCENTER | DT_SINGLELINE); break;
+	case MOVING_UP: drawtext(_T("上升"), &r, DT_CENTER | DT_VCENTER | DT_SINGLELINE); break;
+	case MOVING_DOWN: drawtext(_T("下降"), &r, DT_CENTER | DT_VCENTER | DT_SINGLELINE); break;
+	default: drawtext(_T("错误"), &r, DT_CENTER | DT_VCENTER | DT_SINGLELINE); break;
+	}
+}
+
 int getClickButton(int x, int y) {
 	for (int i = 0; i < mColumns * mRow; i++) {
-		if (i < mColumns && mLow != 0 && i > -1 * mLow - 1) continue;
+		if (i < mColumns && mLow != 0 && 3 - i > -1 * mLow) continue;
 		if (i >= mHigh + 3 && mLow != 0) break;
 		if (i >= mHigh && mLow == 0) break;
 		if (x > buttonRect[i][0] && y > buttonRect[i][1] && x < buttonRect[i][2] && y < buttonRect[i][3]) return i;
 	}
 	return -1;
+}
+
+void* elevatorMoving(void* arg) {
+	int currentEvent = 0, i, indicateNumber = 1;
+	if (mLow != 0) currentEvent = 3;
+	while (true) {
+		Sleep(100);
+		if (status == CLOSED) return NULL;
+		if (status == MOVING_STOP) {
+			drawStatus(MOVING_STOP, indicator[1]);
+			if (event[currentEvent]) {
+				Sleep(1000);
+				setrop2(R2_XORPEN);//XOR
+				setlinecolor(LIGHTCYAN);
+				setlinestyle(PS_SOLID, 3);
+				setfillcolor(WHITE);
+				fillrectangle(buttonRect[currentEvent][0], buttonRect[currentEvent][1], buttonRect[currentEvent][2], buttonRect[currentEvent][3]);
+				event[currentEvent] = 0;
+				continue;
+			}
+			//判断是否有人按下按钮
+			for (i = 0; i < 33; i++) if (event[i]) {
+				if (i < currentEvent) status = MOVING_DOWN;
+				else if (i > currentEvent) status = MOVING_UP;
+				break;
+			}
+			continue;
+		}
+		else if (status == MOVING_UP) {
+			//显示上升中
+			drawStatus(MOVING_UP, indicator[1]);
+			currentEvent++;
+			if (mLow == 0) indicateNumber = currentEvent + 1;
+			else if (currentEvent >= 3) indicateNumber = currentEvent - 2;
+			else indicateNumber = currentEvent - 3;
+			Sleep(1000);
+			drawNumber(indicateNumber, indicator[0]);
+			//判断状态
+			assert(currentEvent < 33);
+			if (!event[currentEvent]) continue;
+			setrop2(R2_XORPEN);
+			setlinecolor(LIGHTCYAN);
+			setlinestyle(PS_SOLID, 3);
+			setfillcolor(WHITE);
+			fillrectangle(buttonRect[currentEvent][0], buttonRect[currentEvent][1], buttonRect[currentEvent][2], buttonRect[currentEvent][3]);
+			event[currentEvent] = 0;
+			for (i = currentEvent; i < 33; i++) if (event[i]) break;
+			if (i != 33) continue;
+			for (i = currentEvent; i >= 0; i--) if (event[i]) {
+				status = MOVING_DOWN;
+				break;
+			}
+			if (i == -1) status = MOVING_STOP;
+		}
+		else if (status == MOVING_DOWN) {
+			//显示下降中
+			drawStatus(MOVING_DOWN, indicator[1]);
+			currentEvent--;
+			if (mLow == 0) indicateNumber = currentEvent + 1;
+			else if (currentEvent >= 3) indicateNumber = currentEvent - 2;
+			else indicateNumber = currentEvent - 3;
+			Sleep(1000);
+			drawNumber(indicateNumber, indicator[0]);
+			//判断状态
+			assert(currentEvent >= 0);
+			if (!event[currentEvent]) continue;
+			setrop2(R2_XORPEN);
+			setlinecolor(LIGHTCYAN);
+			setlinestyle(PS_SOLID, 3);
+			setfillcolor(WHITE);
+			fillrectangle(buttonRect[currentEvent][0], buttonRect[currentEvent][1], buttonRect[currentEvent][2], buttonRect[currentEvent][3]);
+			event[currentEvent] = 0;
+			for (i = currentEvent; i >= 0; i--) if (event[i]) break;
+			if (i != -1) continue;
+			for (i = currentEvent; i < 33; i++) if (event[i]) {
+				status = MOVING_UP;
+				break;
+			}
+			if (i == 33) status = MOVING_STOP;
+		}
+	}
+	return NULL;
 }
