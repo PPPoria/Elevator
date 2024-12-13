@@ -36,9 +36,10 @@
               "RelativeDocumentMoniker": "Elevator\\ElevatorPanel.h",
               "ToolTip": "E:\\MyProjects\\Elevator\\Elevator\\ElevatorPanel.h",
               "RelativeToolTip": "Elevator\\ElevatorPanel.h",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAwAAAAeAAAAAAAAAA==",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAYAAAAlAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
-              "WhenOpened": "2024-12-11T06:02:16.735Z"
+              "WhenOpened": "2024-12-11T06:02:16.735Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
@@ -46,9 +47,9 @@
               "Title": "ElevatorPanel.cpp",
               "DocumentMoniker": "E:\\MyProjects\\Elevator\\Elevator\\ElevatorPanel.cpp",
               "RelativeDocumentMoniker": "Elevator\\ElevatorPanel.cpp",
-              "ToolTip": "E:\\MyProjects\\Elevator\\Elevator\\ElevatorPanel.cpp",
-              "RelativeToolTip": "Elevator\\ElevatorPanel.cpp",
-              "ViewState": "AgIAAPEAAAAAAAAAAAASwAcBAAAeAAAAAAAAAA==",
+              "ToolTip": "E:\\MyProjects\\Elevator\\Elevator\\ElevatorPanel.cpp*",
+              "RelativeToolTip": "Elevator\\ElevatorPanel.cpp*",
+              "ViewState": "AgIAACUBAAAAAAAAAAASwDgBAAAnAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
               "WhenOpened": "2024-12-11T06:02:16.763Z",
               "EditorCaption": ""
@@ -61,9 +62,10 @@
               "RelativeDocumentMoniker": "Elevator\\Main.cpp",
               "ToolTip": "E:\\MyProjects\\Elevator\\Elevator\\Main.cpp",
               "RelativeToolTip": "Elevator\\Main.cpp",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAQAAAASAAAAAAAAAA==",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAA4AAABCAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
-              "WhenOpened": "2024-12-11T06:02:16.818Z"
+              "WhenOpened": "2024-12-11T06:02:16.818Z",
+              "EditorCaption": ""
             }
           ]
         }

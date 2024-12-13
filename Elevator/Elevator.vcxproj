@@ -71,8 +71,8 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <IncludePath>E:\MyProjects\Pre-built.2\include;$(IncludePath)</IncludePath>
-    <LibraryPath>E:\MyProjects\Pre-built.2\lib\x64;$(LibraryPath)</LibraryPath>
+    <IncludePath>E:\MyProjects\C语言多线程库\include;$(IncludePath)</IncludePath>
+    <LibraryPath>E:\MyProjects\C语言多线程库\lib\x64;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>

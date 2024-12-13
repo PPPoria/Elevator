@@ -13,9 +13,10 @@ int main() {
 	int low, high;
 	inputLevel(low, high);
 	setButtonStyle(60, 10);//参数：正方形按钮的边长，以及按钮之间的空隙；修改其可修改界面大小（太小会有黑边）
-	initWin(low, high);
-	initView();
-	initListener();//内有循环
+	initWin(low, high);//初始化窗口
+	initView();//初始化视图
+	drawView();//绘制视图
+	addListener();//内有循环
 	closegraph();//关闭
 	printf("\n>电梯面板已关闭。\n");
 	return 0;
