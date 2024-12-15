@@ -10,9 +10,12 @@ constexpr auto CLOSED = -1;
 constexpr auto MOVING_STOP = 0;
 constexpr auto MOVING_UP = 1;
 constexpr auto MOVING_DOWN = 2;
+constexpr auto WAITING_UP = 3;
+constexpr auto WAITING_DOWN = 4;
 
 
 pthread_t elevatorThread;
+pthread_t buttonThread;
 
 //==========Global variables
 
@@ -21,7 +24,7 @@ int** indicatorRect, ** buttonRect, ** upAndDownRect; int* floorCardRect;
 RECT* indicator, * button, * upAndDown; RECT floorCard;
 bool event[33] = { 0 };//如果有地下层，则前三个为地下层{-3, -2, -1}，event[3]开始才是一楼；否则event[0]即是一楼
 int status = MOVING_STOP;
-bool isOutDoor = 1, isOpenDoor = 0, clickedUp = 0, clickedDown = 0;
+bool isOutDoor = 1, isOpened = 0, clickedUp = 0, clickedDown = 0;
 
 //==============================Utils
 
@@ -195,7 +198,7 @@ void drawView() {
 	setlinecolor(BLACK);
 	rectangle(indicatorRect[0][0], indicatorRect[0][1], indicatorRect[1][2], indicatorRect[1][3]);
 	settextcolor(BLACK);
-	drawNumber(1, indicator[0]);
+	drawNumber(mFloorNumer, indicator[0]);
 	drawStatus(MOVING_STOP, indicator[1]);
 
 	line(mPanelWidth, 0, mPanelWidth, mWindowHeight);
@@ -203,13 +206,22 @@ void drawView() {
 	line(mPanelWidth, mButtonLength, mPanelWidth * 4, mButtonLength);
 	line(mWindowWidth / 2, mButtonLength, mWindowWidth / 2, mWindowHeight);
 
+	if (isOpened) {
+		setfillcolor(BLACK);
+		fillrectangle(mPanelWidth, mButtonLength, mPanelWidth * 4, mWindowHeight);
+	}
+
 	if (isOutDoor) {
+		//绘制上下按钮
+		setrop2(R2_COPYPEN);
+		setlinecolor(BLACK);
+		setlinestyle(PS_SOLID, 1);
 		rectangle(upAndDownRect[0][0], upAndDownRect[0][1], upAndDownRect[0][2], upAndDownRect[0][3]);
 		rectangle(upAndDownRect[1][0], upAndDownRect[1][1], upAndDownRect[1][2], upAndDownRect[1][3]);
 		settextcolor(BLACK);
 		drawtext(_T("UP"), &upAndDown[0], DT_CENTER | DT_VCENTER | DT_SINGLELINE);
 		drawtext(_T("DOWN"), &upAndDown[1], DT_CENTER | DT_VCENTER | DT_SINGLELINE);
-
+		//绘制楼层牌
 		rectangle(floorCardRect[0], floorCardRect[1], floorCardRect[2], floorCardRect[3]);
 		drawNumber(mFloorNumer, floorCard);
 	}
@@ -218,6 +230,9 @@ void drawView() {
 		for (int i = 0, j = -3, k = 1, number; i < mColumns * mRow; i++) {
 			if (i < mColumns && mLow != 0 && 3 - i > -1 * mLow) continue;
 			if (i >= mHigh + 3 && mLow != 0) break;
+			setrop2(R2_COPYPEN);
+			setlinecolor(BLACK);
+			setlinestyle(PS_SOLID, 1);
 			if (i >= mHigh && mLow == 0) break;
 			rectangle(buttonRect[i][0], buttonRect[i][1], buttonRect[i][2], buttonRect[i][3]);
 			if (i < mColumns && mLow != 0)
@@ -235,39 +250,52 @@ void drawView() {
 }
 
 void addListener() {
-	if (pthread_create(&elevatorThread, NULL, elevatorMoving, NULL) != 0) return;//多线程，启动！
+	if (pthread_create(&elevatorThread, NULL, elevatorMoving, NULL) != 0) return;//电梯线程，启动！
 	ExMessage m;
 	while (true) {
 		m = getmessage(EX_MOUSE | EX_KEY);
 		switch (m.message) {
 		case WM_LBUTTONDOWN:
-			buttonDown(m);
+			if (pthread_create(&buttonThread, NULL, buttonDown, &m) != 0) return;//按钮线程，启动！
 			break;
 		case WM_KEYDOWN://Esc退出
 			if (m.vkcode == VK_ESCAPE) {
 				status = CLOSED;
 				pthread_join(elevatorThread, NULL);//别急，等我结束！（等待线程结束）
+				pthread_join(buttonThread, NULL);//别急，等我结束！（等待线程结束）
 				return;
 			}
 		}
 	}
 }
 
-void buttonDown(ExMessage m) {
-	//处理事件
-	setrop2(R2_XORPEN);//XOR
-	setlinecolor(LIGHTCYAN);//亮青色
-	setlinestyle(PS_SOLID, 3);//实线，宽度3
-	setfillcolor(WHITE);//填充色白色
+void* buttonDown(void* m) {
+	ExMessage mouse = *(ExMessage*)m;
+
+	if (isOpened && mouse.x >= mPanelWidth && mouse.y >= mButtonLength && mouse.x <= mPanelWidth * 4 && mouse.y <= mWindowHeight) {
+		isOutDoor = !isOutDoor;
+		clickedUp = clickedDown = 0;
+		drawView();
+	}
+
 	if (isOutDoor) {
-		if (m.x >= upAndDownRect[0][0] && m.x <= upAndDownRect[0][2] && m.y >= upAndDownRect[0][1] && m.y <= upAndDownRect[0][3] && !clickedUp) {
+		if (mouse.x >= upAndDownRect[0][0] && mouse.x <= upAndDownRect[0][2] && mouse.y >= upAndDownRect[0][1] && mouse.y <= upAndDownRect[0][3] && !clickedUp) {
 			clickedUp = 1;
+			setrop2(R2_XORPEN);//XOR
+			setlinecolor(LIGHTCYAN);//亮青色
+			setlinestyle(PS_SOLID, 3);//实线，宽度3
+			setfillcolor(WHITE);//填充色白色
 			fillrectangle(upAndDownRect[0][0], upAndDownRect[0][1], upAndDownRect[0][2], upAndDownRect[0][3]);
 		}
-		else if (m.x >= upAndDownRect[1][0] && m.x <= upAndDownRect[1][2] && m.y >= upAndDownRect[1][1] && m.y <= upAndDownRect[1][3] && !clickedDown) {
+		else if (mouse.x >= upAndDownRect[1][0] && mouse.x <= upAndDownRect[1][2] && mouse.y >= upAndDownRect[1][1] && mouse.y <= upAndDownRect[1][3] && !clickedDown) {
 			clickedDown = 1;
+			setrop2(R2_XORPEN);//XOR
+			setlinecolor(LIGHTCYAN);//亮青色
+			setlinestyle(PS_SOLID, 3);//实线，宽度3
+			setfillcolor(WHITE);//填充色白色
 			fillrectangle(upAndDownRect[1][0], upAndDownRect[1][1], upAndDownRect[1][2], upAndDownRect[1][3]);
 		}
+		else return NULL;
 		if (mLow != 0) {
 			event[mFloorNumer + 2] = 1;
 		}
@@ -276,24 +304,18 @@ void buttonDown(ExMessage m) {
 		}
 	}
 	else {
-		int click = getClickButton(m.x, m.y);
-		if (click == -1) return;
+		int click = getClickButton(mouse.x, mouse.y);
+		if (click == -1) return NULL;
 		if (!event[click]) {
 			event[click] = 1;
+			setrop2(R2_XORPEN);//XOR
+			setlinecolor(LIGHTCYAN);//亮青色
+			setlinestyle(PS_SOLID, 3);//实线，宽度3
+			setfillcolor(WHITE);//填充色白色
 			fillrectangle(buttonRect[click][0], buttonRect[click][1], buttonRect[click][2], buttonRect[click][3]);
 		}
 	}
-
-	//绘制点击波纹
-	setrop2(R2_NOTXORPEN);//NOT XOR
-	for (int i = 0; i < 11; i++) {
-		setlinecolor(RGB(25 * i, 25 * i, 25 * i));
-		circle(m.x, m.y, 2 * i);
-		Sleep(8);
-		circle(m.x, m.y, 2 * i);
-	}
-	FlushMouseMsgBuffer();
-
+	return NULL;
 }
 
 void* elevatorMoving(void* arg) {
@@ -304,30 +326,45 @@ void* elevatorMoving(void* arg) {
 		//判断是否关闭
 		if (status == CLOSED) return NULL;
 
-		if (event[currentEvent]) {
-			//大开门啊！
-			setrop2(R2_BLACK);
-			setlinecolor(BLACK);
-			setlinestyle(PS_SOLID, 1);
-			setfillcolor(WHITE);
-			for (i = 0; i * 4 < (mPanelWidth * 3) / 2; i++) {
-				fillrectangle(mWindowWidth / 2 - i * 4, mButtonLength, mWindowWidth / 2 + i * 4, mWindowHeight);
-				Sleep(1);
-			}
-			fillrectangle(mPanelWidth, mButtonLength, mPanelWidth * 4, mWindowHeight);
-			if (isOutDoor) {
-
+		if (event[currentEvent] && !isOpened) {
+			if (mFloorNumer == indicateNumber || !isOutDoor) {//大开门！
+				for (i = 0; i * 4 < (mPanelWidth * 3) / 2; i++) {
+					setrop2(R2_BLACK);
+					setlinestyle(PS_SOLID, 1);
+					fillrectangle(mWindowWidth / 2 - i * 4, mButtonLength, mWindowWidth / 2 + i * 4, mWindowHeight);
+					Sleep(1);
+				}
+				if (status == CLOSED) return NULL;
+				fillrectangle(mPanelWidth, mButtonLength, mPanelWidth * 4, mWindowHeight);
+				isOpened = 1;
+				mFloorNumer = indicateNumber;
+				Sleep(2000);//给2s时间进入电梯
+				if (status == CLOSED) return NULL;
+				isOpened = 0;
+				for (i = 0; i * 4 < (mPanelWidth * 3) / 2; i++) {
+					setrop2(R2_COPYPEN);
+					setlinecolor(BLACK);
+					setlinestyle(PS_SOLID, 1);
+					setfillcolor(WHITE);
+					fillrectangle(mPanelWidth, mButtonLength, 4 * mPanelWidth, mWindowHeight);
+					setfillcolor(BLACK);
+					fillrectangle(mPanelWidth + i * 4, mButtonLength, 4 * mPanelWidth - i * 4, mWindowHeight);
+					Sleep(1);
+				}
+				setfillcolor(WHITE);
+				fillrectangle(mPanelWidth, mButtonLength, mPanelWidth * 4, mWindowHeight);
+				line(mWindowWidth / 2, mButtonLength, mWindowWidth / 2, mWindowHeight);
 			}
 			else {
-
+				Sleep(3000);
 			}
 		}
 
-		if (status == MOVING_STOP) {//停止
+		if (status == MOVING_STOP || status == WAITING_UP || status == WAITING_DOWN) {//停止
 			//显示停止
 			drawStatus(MOVING_STOP, indicator[1]);
 			if (event[currentEvent]) {
-				Sleep(1000);
+				Sleep(100);
 				if (!isOutDoor) {
 					setrop2(R2_XORPEN);//XOR
 					setlinecolor(LIGHTCYAN);
@@ -335,17 +372,36 @@ void* elevatorMoving(void* arg) {
 					setfillcolor(WHITE);
 					fillrectangle(buttonRect[currentEvent][0], buttonRect[currentEvent][1], buttonRect[currentEvent][2], buttonRect[currentEvent][3]);
 				}
+				else {
+					if (clickedUp && mFloorNumer == indicateNumber) {
+						clickedUp = 0;
+						setrop2(R2_XORPEN);
+						setlinecolor(LIGHTCYAN);
+						setlinestyle(PS_SOLID, 3);
+						setfillcolor(WHITE);
+						fillrectangle(upAndDownRect[0][0], upAndDownRect[0][1], upAndDownRect[0][2], upAndDownRect[0][3]);
+					}
+					if (clickedDown && mFloorNumer == indicateNumber) {
+						clickedDown = 0;
+						setrop2(R2_XORPEN);
+						setlinecolor(LIGHTCYAN);
+						setlinestyle(PS_SOLID, 3);
+						setfillcolor(WHITE);
+						fillrectangle(upAndDownRect[1][0], upAndDownRect[1][1], upAndDownRect[1][2], upAndDownRect[1][3]);
+					}
+				}
 				event[currentEvent] = 0;
-				continue;
+				if (status == WAITING_UP) status = MOVING_UP;
+				else if (status == WAITING_DOWN) status = MOVING_DOWN;
 			}
-			//判断是否有人按下按钮
-			for (i = 0; i < 33; i++) if (event[i]) {
-				if (i < currentEvent) status = MOVING_DOWN;
-				else if (i > currentEvent) status = MOVING_UP;
-				break;
-			}
+			else //判断是否有人按下按钮
+				for (i = 0; i < 33; i++) if (event[i]) {
+					if (i < currentEvent) status = MOVING_DOWN;
+					else if (i > currentEvent) status = MOVING_UP;
+					break;
+				}
 		}
-		else if (status == MOVING_UP) {//上升
+		if (status == MOVING_UP) {//上升
 			//显示上升
 			drawStatus(MOVING_UP, indicator[1]);
 			currentEvent++;
@@ -357,18 +413,11 @@ void* elevatorMoving(void* arg) {
 			//判断状态
 			assert(currentEvent < 33);
 			if (!event[currentEvent]) continue;
-			if (!isOutDoor) {//如果是在电梯外，则不用擦除按钮
-				setrop2(R2_XORPEN);
-				setlinecolor(LIGHTCYAN);
-				setlinestyle(PS_SOLID, 3);
-				setfillcolor(WHITE);
-				fillrectangle(buttonRect[currentEvent][0], buttonRect[currentEvent][1], buttonRect[currentEvent][2], buttonRect[currentEvent][3]);
-			}
-			event[currentEvent] = 0;
-			for (i = currentEvent; i < 33; i++) if (event[i]) break;
+			status = WAITING_UP;
+			for (i = currentEvent + 1; i < 33; i++) if (event[i]) break;
 			if (i != 33) continue;
-			for (i = currentEvent; i >= 0; i--) if (event[i]) {
-				status = MOVING_DOWN;
+			for (i = currentEvent - 1; i >= 0; i--) if (event[i]) {
+				status = WAITING_DOWN;
 				break;
 			}
 			if (i == -1) status = MOVING_STOP;
@@ -385,18 +434,11 @@ void* elevatorMoving(void* arg) {
 			//判断状态
 			assert(currentEvent >= 0);
 			if (!event[currentEvent]) continue;
-			if (!isOutDoor) {//如果是在电梯外，则不用擦除按钮
-				setrop2(R2_XORPEN);
-				setlinecolor(LIGHTCYAN);
-				setlinestyle(PS_SOLID, 3);
-				setfillcolor(WHITE);
-				fillrectangle(buttonRect[currentEvent][0], buttonRect[currentEvent][1], buttonRect[currentEvent][2], buttonRect[currentEvent][3]);
-			}
-			event[currentEvent] = 0;
-			for (i = currentEvent; i >= 0; i--) if (event[i]) break;
+			status = WAITING_DOWN;
+			for (i = currentEvent - 1; i >= 0; i--) if (event[i]) break;
 			if (i != -1) continue;
-			for (i = currentEvent; i < 33; i++) if (event[i]) {
-				status = MOVING_UP;
+			for (i = currentEvent + 1; i < 33; i++) if (event[i]) {
+				status = WAITING_UP;
 				break;
 			}
 			if (i == 33) status = MOVING_STOP;

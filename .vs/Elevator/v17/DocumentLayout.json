@@ -36,10 +36,9 @@
               "RelativeDocumentMoniker": "Elevator\\ElevatorPanel.h",
               "ToolTip": "E:\\MyProjects\\Elevator\\Elevator\\ElevatorPanel.h",
               "RelativeToolTip": "Elevator\\ElevatorPanel.h",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAYAAAAlAAAAAAAAAA==",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAA0AAAAaAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
-              "WhenOpened": "2024-12-11T06:02:16.735Z",
-              "EditorCaption": ""
+              "WhenOpened": "2024-12-11T06:02:16.735Z"
             },
             {
               "$type": "Document",
@@ -49,7 +48,7 @@
               "RelativeDocumentMoniker": "Elevator\\ElevatorPanel.cpp",
               "ToolTip": "E:\\MyProjects\\Elevator\\Elevator\\ElevatorPanel.cpp",
               "RelativeToolTip": "Elevator\\ElevatorPanel.cpp",
-              "ViewState": "AgIAACUBAAAAAAAAAAASwDgBAAA0AAAAAAAAAA==",
+              "ViewState": "AgIAAO4AAAAAAAAAAAASwPsAAAAUAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
               "WhenOpened": "2024-12-11T06:02:16.763Z",
               "EditorCaption": ""
@@ -64,8 +63,7 @@
               "RelativeToolTip": "Elevator\\Main.cpp",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAA4AAABCAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
-              "WhenOpened": "2024-12-11T06:02:16.818Z",
-              "EditorCaption": ""
+              "WhenOpened": "2024-12-11T06:02:16.818Z"
             }
           ]
         }

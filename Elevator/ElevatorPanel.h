@@ -11,5 +11,5 @@ void initWin(int low, int high);
 void initView();
 void drawView();
 void addListener();
-void buttonDown(ExMessage m);
+void* buttonDown(void* m);
 void* elevatorMoving(void* arg);
