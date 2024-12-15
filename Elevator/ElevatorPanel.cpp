@@ -297,7 +297,8 @@ void* buttonDown(void* m) {
 		}
 		else return NULL;
 		if (mLow != 0) {
-			event[mFloorNumer + 2] = 1;
+			if (mFloorNumer > 0) event[mFloorNumer + 2] = 1;
+			else event[mFloorNumer + 3] = 1;
 		}
 		else {
 			event[mFloorNumer] = 1;
