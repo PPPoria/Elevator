@@ -1,4 +1,2 @@
-﻿  ElevatorPanel.cpp
-E:\MyProjects\Elevator\Elevator\ElevatorPanel.cpp(230,34): warning C4101: “number”: 未引用的局部变量
-  LINK : 没有找到 E:\MyProjects\Elevator\x64\Debug\Elevator.exe 或上一个增量链接没有生成它；正在执行完全链接
+﻿  Main.cpp
   Elevator.vcxproj -> E:\MyProjects\Elevator\x64\Debug\Elevator.exe

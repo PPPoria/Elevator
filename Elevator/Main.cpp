@@ -18,7 +18,8 @@ int main() {
 	drawView();//绘制视图
 	addListener();//内有循环
 	closegraph();//关闭
-	printf("\n>电梯面板已关闭。\n");
+	printf("\n>电梯面板已关闭。\n>");
+	system("pause");
 	return 0;
 }
 
